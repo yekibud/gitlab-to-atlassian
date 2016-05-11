@@ -100,6 +100,9 @@ def main(argv=None):
     parser.add_argument('-i', '--ignore_list',
                         help='List of project names to exclude from dump.',
                         type=argparse.FileType('r'))
+    parser.add_argument('-m', '--preserve_markdown',
+                        help='Do not convert GitLab MarkDown to JIRA Wiki markup.',
+                        action='store_true', default=False)
     parser.add_argument('-p', '--password',
                         help='The password to use to authenticate if token is \
                               not specified. If password and token are both \
@@ -198,8 +201,11 @@ def main(argv=None):
                         key = key[:-1] + chr(suffix)
                 key_set.add(key)
                 jira_project['key'] = key
-                jira_project['description'] = md_to_wiki(project['description'])
-                # jira_project['created'] = project['created_at']
+                if args.preserve_markdown:
+                    jira_project['description'] = project['description']
+                else:
+                    jira_project['description'] = md_to_wiki(project['description'])
+
                 jira_project['issues'] = []
                 for issue in project_issues:
                     jira_issue = {}
@@ -210,7 +216,10 @@ def main(argv=None):
                     else:
                         jira_issue['status'] = 'Open'
 
-                    jira_issue['description'] = md_to_wiki(issue['description'])
+                    if args.preserve_markdown:
+                        jira_issue['description'] = issue['description']
+                    else:
+                        jira_issue['description'] = md_to_wiki(issue['description'])
                     jira_issue['reporter'] = issue['author']['username']
                     mentioned_users.add(jira_issue['reporter'])
                     jira_issue['labels'] = issue['labels']
@@ -224,7 +233,10 @@ def main(argv=None):
                     for note in git.getissuewallnotes(project['id'],
                                                       issue['id']):
                         jira_note = {}
-                        jira_note['body'] = md_to_wiki(note['body'])
+                        if args.preserve_markdown:
+                            jira_note['body'] = note['body']
+                        else:
+                            jira_note['body'] = md_to_wiki(note['body'])
                         jira_note['author'] = note['author']['username']
                         mentioned_users.add(jira_note['author'])
                         jira_note['created'] = note['created_at']
