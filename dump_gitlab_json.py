@@ -98,8 +98,11 @@ def main(argv=None):
                               issues.',
                         action='store_true')
     parser.add_argument('-i', '--ignore_list',
-                        help='List of project names to exclude from dump.',
+                        help='List of project names to exclude from dump. (Read from a file, one project name per line.)',
                         type=argparse.FileType('r'))
+    parser.add_argument('-I', '--include_list',
+                        help='List of project names to include in dump. (Read as space delimited arguments.)',
+                        nargs="+")
     parser.add_argument('-m', '--preserve_markdown',
                         help='Do not convert GitLab MarkDown to JIRA Wiki markup.',
                         action='store_true', default=False)
@@ -168,6 +171,8 @@ def main(argv=None):
     for project in gen_all_results(git.getprojectsall,
                                    per_page=args.page_size):
         proj_name_lower = project['name'].lower()
+        if args.include_list and proj_name_lower not in args.include_list:
+            continue
         if proj_name_lower not in ignore_list and project['issues_enabled']:
             project_issues = []
             for issue in gen_all_results(git.getprojectissues, project['id'],
