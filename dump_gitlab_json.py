@@ -50,6 +50,14 @@ def gen_all_results(method, *args, per_page=20, **kwargs):
             get_more = False
 
 
+def dict_from_strings(strings):
+    dict_ = {}
+    for item in strings:
+        k, v = item.split('=')
+        dict_[k] = v
+    return dict_
+
+
 class GLParser(object):
     '''
     Make the original asset url absolute so it will still link from JIRA
@@ -107,6 +115,8 @@ def main(argv=None):
                               the specified date. Expected format is \
                               YYYY-MM-DD',
                         type=get_datetime, default='1970-01-01')
+    parser.add_argument('-D', '--default_JIRA_project',
+                        help='Optional default JIRA project name for all project issues to be imported into')
     parser.add_argument('-e', '--include_empty',
                         help='Include projects in output that do not have any\
                               issues.',
@@ -123,6 +133,9 @@ def main(argv=None):
     parser.add_argument('-M', '--project_map',
                         help='Map of GL project names to thier corresponding JIRA project names.  (Read as space delimited arguments of the form oldprojname=newprojname.)',
                         nargs="+")
+    parser.add_argument('-n', '--add_GL_namespace_to_ID',
+                        help='Add the GL namespace to the external JIRA ID.  This is necessary if importing multiple GL projects into a single JIRA project.',
+                        action='store_true', default=False)
     parser.add_argument('-p', '--password',
                         help='The password to use to authenticate if token is \
                               not specified. If password and token are both \
@@ -135,6 +148,9 @@ def main(argv=None):
     parser.add_argument('-s', '--verify_ssl',
                         help='Enable SSL certificate verification',
                         action='store_true')
+    parser.add_argument('-S', '--status_map',
+                        help='Map of GL project statuses to thier corresponding JIRA statuses.  (Read as space delimited arguments of the form oldstatus=newstatus.)',
+                        nargs="+")
     parser.add_argument('-t', '--token',
                         help='The private GitLab API token to use for \
                               authentication. Either this or username and \
@@ -211,11 +227,10 @@ def main(argv=None):
                 jira_project = {}
                 jira_project['name'] = project['name_with_namespace']
                 key = project['name']
-                if args.project_map:
-                    project_map_dict = {}
-                    for item in args.project_map:
-                        k, v = item.split('=')
-                        project_map_dict[k] = v
+                if args.default_JIRA_project:
+                    key = args.default_JIRA_project
+                elif args.project_map:
+                    project_map_dict = dict_from_strings(args.project_map)
                     key = project_map_dict.get(key, key)
                 else:
                     if key.islower():
@@ -224,26 +239,32 @@ def main(argv=None):
                     if len(key) < 2:
                         key = re.sub(r'[^A-Za-z]', '',
                                      project['name'])[0:2].upper()
-                added = False
-                suffix = 65
-                while key in key_set:
-                    if not added:
-                        key += 'A'
-                    else:
-                        suffix += 1
-                        key = key[:-1] + chr(suffix)
-                key_set.add(key)
+                    added = False
+                    suffix = 65
+                    while key in key_set:
+                        if not added:
+                            key += 'A'
+                        else:
+                            suffix += 1
+                            key = key[:-1] + chr(suffix)
+                    key_set.add(key)
                 jira_project['key'] = key
                 jira_project['description'] = glparser.to_JIRA(project['description'])
                 jira_project['issues'] = []
                 for issue in project_issues:
                     jira_issue = {}
-                    jira_issue['externalId'] = issue['iid']
+                    external_id = issue['iid']
+                    if args.add_GL_namespace_to_ID:
+                        external_id = "{}#{}".format(project['path_with_namespace'], external_id)
+                    jira_issue['externalId'] = external_id
                     if issue['state'] == 'closed':
                         jira_issue['status'] = 'Closed'
                         jira_issue['resolution'] = 'Resolved'
                     else:
                         jira_issue['status'] = 'Open'
+                    if args.status_map:
+                        status_map_dict = dict_from_strings(args.status_map)
+                        jira_issue['status'] = status_map_dict.get(issue['state'], jira_issue['status'])
                     jira_issue['description'] = glparser.to_JIRA(issue['description'])
                     jira_issue['reporter'] = issue['author']['username']
                     mentioned_users.add(jira_issue['reporter'])
