@@ -88,6 +88,9 @@ def main(argv=None):
         conflict_handler='resolve')
     parser.add_argument('gitlab_url',
                         help='The full URL to your GitLab instance.')
+    parser.add_argument('-c', '--projects_to_components',
+                        help='Create JIRA components from GitLab project names.',
+                        action='store_true', default=False)
     parser.add_argument('-d', '--date_filter',
                         help='Only include issues, notes, etc. created after\
                               the specified date. Expected format is \
@@ -233,6 +236,8 @@ def main(argv=None):
                         jira_issue['assignee'] = issue['assignee']['username']
                         mentioned_users.add(jira_issue['assignee'])
                     jira_issue['issueType'] = 'Bug'
+                    if args.projects_to_components:
+                        jira_issue['components'] = [proj_name_lower]
                     jira_issue['comments'] = []
                     # Get all comments/notes
                     for note in git.getissuewallnotes(project['id'],
