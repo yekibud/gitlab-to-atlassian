@@ -125,6 +125,9 @@ def main(argv=None):
                         help='The private GitLab API token to use for \
                               authentication. Either this or username and \
                               password must be set.')
+    parser.add_argument('-T', '--issue_type',
+                        help='Specify the default JIRA issue type.',
+                        type=str, default='Bug')
     parser.add_argument('-u', '--username',
                         help='The username to use for authentication, if token\
                               is unspecified.')
@@ -235,7 +238,7 @@ def main(argv=None):
                     if issue['assignee']:
                         jira_issue['assignee'] = issue['assignee']['username']
                         mentioned_users.add(jira_issue['assignee'])
-                    jira_issue['issueType'] = 'Bug'
+                    jira_issue['issueType'] = args.issue_type
                     if args.projects_to_components:
                         jira_issue['components'] = [proj_name_lower]
                     jira_issue['comments'] = []
