@@ -120,6 +120,9 @@ def main(argv=None):
     parser.add_argument('-m', '--preserve_markdown',
                         help='Do not convert GitLab MarkDown to JIRA Wiki markup.',
                         action='store_true', default=False)
+    parser.add_argument('-M', '--project_map',
+                        help='Map of GL project names to thier corresponding JIRA project names.  (Read as space delimited arguments of the form oldprojname=newprojname.)',
+                        nargs="+")
     parser.add_argument('-p', '--password',
                         help='The password to use to authenticate if token is \
                               not specified. If password and token are both \
@@ -208,12 +211,19 @@ def main(argv=None):
                 jira_project = {}
                 jira_project['name'] = project['name_with_namespace']
                 key = project['name']
-                if key.islower():
-                    key = key.title()
-                key = re.sub(r'[^A-Z]', '', key)
-                if len(key) < 2:
-                    key = re.sub(r'[^A-Za-z]', '',
-                                 project['name'])[0:2].upper()
+                if args.project_map:
+                    project_map_dict = {}
+                    for item in args.project_map:
+                        k, v = item.split('=')
+                        project_map_dict[k] = v
+                    key = project_map_dict.get(key, key)
+                else:
+                    if key.islower():
+                        key = key.title()
+                    key = re.sub(r'[^A-Z]', '', key)
+                    if len(key) < 2:
+                        key = re.sub(r'[^A-Za-z]', '',
+                                     project['name'])[0:2].upper()
                 added = False
                 suffix = 65
                 while key in key_set:
