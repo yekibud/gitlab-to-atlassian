@@ -50,27 +50,38 @@ def gen_all_results(method, *args, per_page=20, **kwargs):
             get_more = False
 
 
-def md_to_wiki(md_string):
+class GLParser(object):
     '''
-    Take Markdown-formatted comments and convert them to Wiki format.
+    Make the original asset url absolute so it will still link from JIRA
+    if GitLab is preserved for SCM. Also optionally take Markdown-formatted
+    comments and convert them to Wiki format.
     '''
-    output_buf = StringIO()
-    if md_string is not None:
-        for line in md_string.splitlines():
-            # Code blocks
-            line = re.sub(r'```([a-z]+)$', r'{code:\1}', line)
-            line = re.sub(r'```$', r'{code}', line)
-            # Emoji
-            line = line.replace(':+1:', '(y)')
-            line = line.replace(':-1:', '(n)')
-            # Hyperlinks
-            line = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'[\1|\2]', line)
-            # Usernames
-            line = re.sub(r'@([a-zA-Z0-9]+)(\b|_$)', r'[~\1]\2', line)
-            print(line, file=output_buf)
-    else:
-        print('', file=output_buf)
-    return output_buf.getvalue()
+
+    def __init__(self, preserve_markdown, GL_root_url):
+        self.preserve_markdown = preserve_markdown
+        self.GL_root_url = GL_root_url
+
+    def to_JIRA(self, text):
+        output_buf = StringIO()
+        if text is not None:
+            for line in text.splitlines():
+                if not self.preserve_markdown:
+                    # Code blocks
+                    line = re.sub(r'```([a-z]+)$', r'{code:\1}', line)
+                    line = re.sub(r'```$', r'{code}', line)
+                    # Emoji
+                    line = line.replace(':+1:', '(y)')
+                    line = line.replace(':-1:', '(n)')
+                    # Hyperlinks
+                    line = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'[\1|\2]', line)
+                    # Usernames
+                    line = re.sub(r'@([a-zA-Z0-9]+)(\b|_$)', r'[~\1]\2', line)
+                asset_sub = r']({}\1'.format(self.GL_root_url)
+                line = re.sub(r'\]\((\/uploads\/[a-z0-9]+\/)', sub, line)
+                print(line, file=output_buf)
+        else:
+            print('', file=output_buf)
+        return output_buf.getvalue()
 
 
 def main(argv=None):
@@ -193,6 +204,7 @@ def main(argv=None):
                             break
 
             if project_issues or args.include_empty:
+                glparser = GLParser(args.preserve_markdown, project['web_url'])
                 jira_project = {}
                 jira_project['name'] = project['name_with_namespace']
                 key = project['name']
@@ -212,11 +224,7 @@ def main(argv=None):
                         key = key[:-1] + chr(suffix)
                 key_set.add(key)
                 jira_project['key'] = key
-                if args.preserve_markdown:
-                    jira_project['description'] = project['description']
-                else:
-                    jira_project['description'] = md_to_wiki(project['description'])
-
+                jira_project['description'] = glparser.to_JIRA(project['description'])
                 jira_project['issues'] = []
                 for issue in project_issues:
                     jira_issue = {}
@@ -226,11 +234,7 @@ def main(argv=None):
                         jira_issue['resolution'] = 'Resolved'
                     else:
                         jira_issue['status'] = 'Open'
-
-                    if args.preserve_markdown:
-                        jira_issue['description'] = issue['description']
-                    else:
-                        jira_issue['description'] = md_to_wiki(issue['description'])
+                    jira_issue['description'] = glparser.to_JIRA(issue['description'])
                     jira_issue['reporter'] = issue['author']['username']
                     mentioned_users.add(jira_issue['reporter'])
                     jira_issue['labels'] = issue['labels']
@@ -246,10 +250,7 @@ def main(argv=None):
                     for note in git.getissuewallnotes(project['id'],
                                                       issue['id']):
                         jira_note = {}
-                        if args.preserve_markdown:
-                            jira_note['body'] = note['body']
-                        else:
-                            jira_note['body'] = md_to_wiki(note['body'])
+                        jira_note['body'] = glparser.to_JIRA(note['body'])
                         jira_note['author'] = note['author']['username']
                         mentioned_users.add(jira_note['author'])
                         jira_note['created'] = note['created_at']
