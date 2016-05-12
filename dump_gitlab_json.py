@@ -77,7 +77,7 @@ class GLParser(object):
                     # Usernames
                     line = re.sub(r'@([a-zA-Z0-9]+)(\b|_$)', r'[~\1]\2', line)
                 asset_sub = r']({}\1'.format(self.GL_root_url)
-                line = re.sub(r'\]\((\/uploads\/[a-z0-9]+\/)', sub, line)
+                line = re.sub(r'\]\((\/uploads\/[a-z0-9]+\/)', asset_sub, line)
                 print(line, file=output_buf)
         else:
             print('', file=output_buf)
