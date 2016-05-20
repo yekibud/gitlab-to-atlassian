@@ -15,9 +15,13 @@ I'm posting it on GitHub since other people may also find it useful.
 ### Usage
 
 ```
-usage: dump_gitlab_json.py [-h] [-d DATE_FILTER] [-e] [-i IGNORE_LIST]
-                           [-p PASSWORD] [-P PAGE_SIZE] [-s] [-t TOKEN]
-                           [-u USERNAME] [-v] [--version]
+usage: dump_gitlab_json.py [-h] [-c] [-d DATE_FILTER]
+                           [-D DEFAULT_JIRA_PROJECT] [-e] [-i IGNORE_LIST]
+                           [-I INCLUDE_LIST [INCLUDE_LIST ...]] [-m]
+                           [-M PROJECT_MAP [PROJECT_MAP ...]] [-n]
+                           [-p PASSWORD] [-P PAGE_SIZE] [-s]
+                           [-S STATUS_MAP [STATUS_MAP ...]] [-t TOKEN]
+                           [-T ISSUE_TYPE] [-u USERNAME] [-v] [--version]
                            gitlab_url
 
 Export all users/issues from GitLab to JIRA JSON format.
@@ -27,15 +31,35 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -c, --projects_to_components
+                        Create JIRA components from GitLab project names.
+                        (default: False)
   -d DATE_FILTER, --date_filter DATE_FILTER
                         Only include issues, notes, etc. created after the
                         specified date. Expected format is YYYY-MM-DD
                         (default: 1970-01-01)
+  -D DEFAULT_JIRA_PROJECT, --default_JIRA_project DEFAULT_JIRA_PROJECT
+                        Optional default JIRA project name for all project
+                        issues to be imported into (default: None)
   -e, --include_empty   Include projects in output that do not have any
                         issues. (default: False)
   -i IGNORE_LIST, --ignore_list IGNORE_LIST
-                        List of project names to exclude from dump. (default:
-                        None)
+                        List of project names to exclude from dump. (Read from
+                        a file, one project name per line.) (default: None)
+  -I INCLUDE_LIST [INCLUDE_LIST ...], --include_list INCLUDE_LIST [INCLUDE_LIST ...]
+                        List of project names to include in dump. (Read as
+                        space delimited arguments.) (default: None)
+  -m, --preserve_markdown
+                        Do not convert GitLab MarkDown to JIRA Wiki markup.
+                        (default: False)
+  -M PROJECT_MAP [PROJECT_MAP ...], --project_map PROJECT_MAP [PROJECT_MAP ...]
+                        Map of GL project names to thier corresponding JIRA
+                        project names. (Read as space delimited arguments of
+                        the form oldprojname=newprojname.) (default: None)
+  -n, --add_GL_namespace_to_ID
+                        Add the GL namespace to the external JIRA ID. This is
+                        necessary if importing multiple GL projects into a
+                        single JIRA project. (default: False)
   -p PASSWORD, --password PASSWORD
                         The password to use to authenticate if token is not
                         specified. If password and token are both unspecified,
@@ -45,10 +69,16 @@ optional arguments:
                         When retrieving result from GitLab, how many results
                         should be included in a given page?. (default: 20)
   -s, --verify_ssl      Enable SSL certificate verification (default: False)
+  -S STATUS_MAP [STATUS_MAP ...], --status_map STATUS_MAP [STATUS_MAP ...]
+                        Map of GL project statuses to thier corresponding JIRA
+                        statuses. (Read as space delimited arguments of the
+                        form oldstatus=newstatus.) (default: None)
   -t TOKEN, --token TOKEN
                         The private GitLab API token to use for
                         authentication. Either this or username and password
                         must be set. (default: None)
+  -T ISSUE_TYPE, --issue_type ISSUE_TYPE
+                        Specify the default JIRA issue type. (default: Bug)
   -u USERNAME, --username USERNAME
                         The username to use for authentication, if token is
                         unspecified. (default: None)
